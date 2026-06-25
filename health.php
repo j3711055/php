@@ -3,7 +3,7 @@
  * health.php — Railway health check endpoint
  *
  * Railway probes GET /health.php to verify the container is alive.
- * Also verifies the database connection is working.
+ * Checks MySQL connectivity via a lightweight SELECT 1.
  */
 
 declare(strict_types=1);
@@ -16,23 +16,23 @@ $status  = 'ok';
 $details = [];
 $code    = 200;
 
-// ── Check DB connectivity ─────────────────────────────────────
+// ── Check MySQL connectivity ──────────────────────────────────
 try {
     require_once __DIR__ . '/db.php';
     $db = getDB();
     $db->query('SELECT 1')->fetchColumn();
-    $details['database'] = 'ok';
+    $details['database'] = 'mysql:ok';
 } catch (Throwable $e) {
-    $status             = 'degraded';
-    $details['database'] = 'error';
-    $code               = 503;
+    $status              = 'degraded';
+    $details['database'] = 'mysql:error';
+    // Don't expose the actual error message in the response
+    $code = 503;
 }
 
-// ── Check writable data directory ────────────────────────────
-$dbPath  = getenv('SQLITE_DB_PATH') ?: './database/oneiq.sqlite';
-$dbDir   = dirname($dbPath);
-$details['db_path']   = $dbPath;
-$details['db_writable'] = is_writable($dbDir) ? 'yes' : 'no';
+// ── Include connection host for debugging (no credentials) ────
+$cfg = getMysqlConfig();
+$details['db_host'] = $cfg['host'] . ':' . $cfg['port'];
+$details['db_name'] = $cfg['dbname'];
 
 http_response_code($code);
 echo json_encode([

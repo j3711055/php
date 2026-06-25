@@ -1,28 +1,44 @@
 <?php
 /**
- * db.php — Shared database connection helper
+ * db.php — Shared MySQL database connection helper
  *
- * Changes from original:
- *  - DB_PATH read from SQLITE_DB_PATH environment variable
- *  - Auto-creates the database if it doesn't exist (Railway-safe)
- *  - No more RuntimeException on missing file (init runs on first access)
- *  - DB_DIR constant for directory checks
+ * Reads connection details from Railway MySQL plugin environment variables.
+ * Railway provides either:
+ *   - MYSQL_URL = mysql://USER:PASSWORD@HOST:PORT/DATABASE
+ *   OR individual vars:
+ *   - MYSQLHOST, MYSQLPORT, MYSQLUSER, MYSQLPASSWORD, MYSQLDATABASE
+ *
+ * Both formats are supported, MYSQL_URL takes priority.
  */
 
 declare(strict_types=1);
 
-// ── Resolve DB path from environment ─────────────────────────
-// On Railway: SQLITE_DB_PATH=/data/oneiq.sqlite  (persistent Volume)
-// Locally:    defaults to ./database/oneiq.sqlite
-define('DB_PATH', (function (): string {
-    $envPath = getenv('SQLITE_DB_PATH');
-    if ($envPath && $envPath !== '') {
-        return $envPath;
-    }
-    return __DIR__ . '/database/oneiq.sqlite';
-})());
+// ── Parse MySQL connection details from environment ───────────
+function getMysqlConfig(): array
+{
+    $url = getenv('MYSQL_URL') ?: getenv('DATABASE_URL') ?: '';
 
-define('DB_DIR', dirname(DB_PATH));
+    if ($url !== '') {
+        // Parse Railway MySQL URL: mysql://USER:PASS@HOST:PORT/DATABASE
+        $p = parse_url($url);
+        return [
+            'host'   => $p['host']            ?? 'localhost',
+            'port'   => (string)($p['port']   ?? 3306),
+            'user'   => $p['user']            ?? 'root',
+            'pass'   => urldecode($p['pass']  ?? ''),
+            'dbname' => ltrim($p['path'] ?? '/oneiq', '/'),
+        ];
+    }
+
+    // Fall back to individual Railway MySQL plugin variables
+    return [
+        'host'   => getenv('MYSQLHOST')     ?: getenv('DB_HOST')     ?: 'localhost',
+        'port'   => getenv('MYSQLPORT')     ?: getenv('DB_PORT')     ?: '3306',
+        'user'   => getenv('MYSQLUSER')     ?: getenv('DB_USER')     ?: 'root',
+        'pass'   => getenv('MYSQLPASSWORD') ?: getenv('DB_PASSWORD') ?: '',
+        'dbname' => getenv('MYSQLDATABASE') ?: getenv('DB_NAME')     ?: 'oneiq',
+    ];
+}
 
 // ── PDO singleton ─────────────────────────────────────────────
 function getDB(): PDO
@@ -30,57 +46,26 @@ function getDB(): PDO
     static $pdo = null;
 
     if ($pdo === null) {
-        // Ensure the database directory exists
-        if (!is_dir(DB_DIR)) {
-            if (!mkdir(DB_DIR, 0750, true) && !is_dir(DB_DIR)) {
-                throw new RuntimeException('Failed to create database directory: ' . DB_DIR);
-            }
-        }
+        $cfg = getMysqlConfig();
 
-        // Auto-initialize if the file doesn't exist yet
-        // (This handles Railway fresh deploys with an empty Volume)
-        if (!file_exists(DB_PATH)) {
-            _initializeDatabase();
-        }
+        $dsn = sprintf(
+            'mysql:host=%s;port=%s;dbname=%s;charset=utf8mb4',
+            $cfg['host'],
+            $cfg['port'],
+            $cfg['dbname']
+        );
 
-        $pdo = new PDO('sqlite:' . DB_PATH, null, null, [
+        $pdo = new PDO($dsn, $cfg['user'], $cfg['pass'], [
             PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_EMULATE_PREPARES   => false,
+            // Keep connections alive and reconnect on failure
+            PDO::ATTR_PERSISTENT         => false,
+            PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci",
         ]);
-
-        // SQLite performance + reliability settings
-        $pdo->exec("PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; PRAGMA foreign_keys=ON;");
     }
 
     return $pdo;
-}
-
-// ── Database initialization (called automatically on first run) ─
-function _initializeDatabase(): void
-{
-    $pdo = new PDO('sqlite:' . DB_PATH, null, null, [
-        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-    ]);
-
-    $pdo->exec("PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;");
-
-    $pdo->exec("
-        CREATE TABLE IF NOT EXISTS matches (
-            id          INTEGER PRIMARY KEY AUTOINCREMENT,
-            match_name  TEXT    NOT NULL,
-            team_a      TEXT    NOT NULL DEFAULT '',
-            team_b      TEXT    NOT NULL DEFAULT '',
-            match_time  TEXT    NOT NULL DEFAULT '',
-            stream_link TEXT    NOT NULL,
-            is_live     INTEGER NOT NULL DEFAULT 0,
-            created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-    ");
-
-    // Set secure file permissions
-    if (file_exists(DB_PATH)) {
-        chmod(DB_PATH, 0640);
-    }
 }
 
 // ── JSON response helper ──────────────────────────────────────
@@ -109,6 +94,5 @@ function isValidStreamUrl(string $url): bool
     if (!isset($parsed['scheme'], $parsed['host'])) {
         return false;
     }
-    // Only allow http and https schemes
     return in_array(strtolower($parsed['scheme']), ['http', 'https'], true);
 }

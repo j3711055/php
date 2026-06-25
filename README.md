@@ -1,6 +1,6 @@
 # واحد العراق — OneIQ Streaming Platform
 
-A professional Arabic-language sports streaming platform built with **PHP 8.3 + SQLite + Nginx**, containerised with Docker, and production-ready for **Railway** deployment.
+A professional Arabic-language sports streaming platform built with **PHP 8.3 + MySQL + Nginx**, containerised with Docker, and production-ready for **Railway** deployment.
 
 ---
 
@@ -15,13 +15,13 @@ ONEIQ/
 ├── go.php                  ← Referer-stripping stream redirect gateway
 ├── health.php              ← Railway health check endpoint
 ├── config.php              ← Reads secrets from environment variables
-├── db.php                  ← Shared PDO singleton + helpers
-├── init_db.php             ← DB initialization (auto-runs on first boot)
+├── db.php                  ← Shared MySQL PDO singleton + helpers
+├── init_db.php             ← DB schema init (auto-runs on boot)
 ├── composer.json           ← PHP dependency manifest
 │
-├── Dockerfile              ← Multi-stage Docker build
-├── .dockerignore           ← Files excluded from Docker image
-├── .gitignore              ← Files excluded from Git
+├── Dockerfile              ← PHP 8.3-FPM Alpine + Nginx + supervisord
+├── .dockerignore
+├── .gitignore
 ├── railway.json            ← Railway deployment configuration
 ├── .env.example            ← Template for environment variables
 ├── supervisord.conf        ← Manages nginx + php-fpm in one container
@@ -33,24 +33,22 @@ ONEIQ/
 │   └── entrypoint.sh       ← Container startup script
 │
 └── assets/
-    ├── css/
-    │   ├── style.css       ← Main site styles
-    │   └── admin.css       ← Admin dashboard styles
-    └── js/
-        ├── main.js         ← Index page logic
-        └── admin.js        ← Admin dashboard logic
+    ├── css/style.css       ← Main site styles
+    ├── css/admin.css       ← Admin dashboard styles
+    ├── js/main.js          ← Index page logic
+    └── js/admin.js         ← Admin dashboard logic
 ```
 
 ---
 
-## Railway Deployment (Recommended)
+## Railway Deployment
 
 ### Step 1 — Push to GitHub
 
 ```bash
 git init
 git add .
-git commit -m "Initial commit — Railway-ready"
+git commit -m "Initial commit — Railway-ready (MySQL)"
 git remote add origin https://github.com/YOUR_USERNAME/oneiq.git
 git push -u origin main
 ```
@@ -58,70 +56,85 @@ git push -u origin main
 ### Step 2 — Create Railway Project
 
 1. Go to [railway.app](https://railway.app) → **New Project**
-2. Choose **Deploy from GitHub repo**
-3. Select your `oneiq` repository
-4. Railway will detect the `Dockerfile` automatically
+2. Choose **Deploy from GitHub repo** → select your `oneiq` repository
+3. Railway detects the `Dockerfile` automatically
 
-### Step 3 — Add Environment Variables
+### Step 3 — Add MySQL Plugin
 
-In Railway dashboard → your service → **Variables** tab, add:
+> ⚠️ **Do this BEFORE the first deploy so env vars are available at boot.**
+
+1. In your Railway project dashboard, click **+ New**
+2. Select **Database** → **MySQL**
+3. Railway creates a MySQL service and automatically injects these variables into your app service:
+
+| Variable | Set By | Description |
+|----------|--------|-------------|
+| `MYSQL_URL` | Railway (auto) | Full connection URL |
+| `MYSQLHOST` | Railway (auto) | MySQL hostname |
+| `MYSQLPORT` | Railway (auto) | MySQL port |
+| `MYSQLUSER` | Railway (auto) | MySQL username |
+| `MYSQLPASSWORD` | Railway (auto) | MySQL password |
+| `MYSQLDATABASE` | Railway (auto) | Database name |
+
+**You do not need to set any MySQL variables manually.**
+
+### Step 4 — Add App Environment Variables
+
+In Railway dashboard → your **app service** (not the MySQL service) → **Variables** tab:
 
 | Variable | Value | Notes |
 |----------|-------|-------|
 | `ADMIN_TOKEN` | `your-random-token` | Generate: `openssl rand -hex 32` |
 | `ADMIN_PASSWORD` | `your-strong-password` | Min 16 chars recommended |
-| `SQLITE_DB_PATH` | `/data/oneiq.sqlite` | Must match Volume mount point |
 | `APP_ENV` | `production` | Enables strict CORS |
 
-### Step 4 — Add Persistent Volume
+### Step 5 — Deploy
 
-> ⚠️ **Critical:** Without this, your database resets on every redeploy!
+Railway deploys automatically after pushing to GitHub. Watch the deploy logs — the entrypoint will:
+1. Wait for MySQL to be ready (up to 60 seconds, 30 retries)
+2. Create the `matches` table if it doesn't exist
+3. Seed demo data on first boot
+4. Start Nginx + PHP-FPM
 
-1. Railway dashboard → your service → **Volumes** tab
-2. Click **Add Volume**
-3. Set **Mount Path** to `/data`
-4. Click **Add**
-
-Railway will redeploy automatically. Your SQLite database now survives redeploys.
-
-### Step 5 — Verify Deployment
-
-After deploy completes:
+### Step 6 — Verify
 
 ```bash
-# Health check
+# Health check (replace with your Railway URL)
 curl https://your-app.railway.app/health.php
-
-# Expected response:
-# {"status":"ok","details":{"database":"ok","db_writable":"yes",...}}
+# Expected: {"status":"ok","details":{"database":"mysql:ok",...}}
 
 # API
 curl https://your-app.railway.app/api.php
-
-# Expected response:
-# {"success":true,"matches":[...]}
+# Expected: {"success":true,"matches":[...]}
 ```
 
 ---
 
-## Local Development with Docker
+## Local Development with Docker + MySQL
 
 ```bash
-# 1. Copy environment template
-cp .env.example .env
-# Edit .env with your values
+# 1. Start a local MySQL container
+docker run -d \
+  --name oneiq-mysql \
+  -e MYSQL_ROOT_PASSWORD=devpass \
+  -e MYSQL_DATABASE=oneiq \
+  -p 3306:3306 \
+  mysql:8.0
 
-# 2. Build the image
+# 2. Build the app image
 docker build -t oneiq .
 
-# 3. Run (with local volume for SQLite persistence)
+# 3. Run the app
 docker run -d \
   --name oneiq \
   -p 8080:8080 \
-  -v oneiq-data:/data \
-  -e ADMIN_TOKEN=my-dev-token \
-  -e ADMIN_PASSWORD=my-dev-password \
-  -e SQLITE_DB_PATH=/data/oneiq.sqlite \
+  -e ADMIN_TOKEN=dev-token \
+  -e ADMIN_PASSWORD=dev-password \
+  -e MYSQLHOST=host.docker.internal \
+  -e MYSQLPORT=3306 \
+  -e MYSQLUSER=root \
+  -e MYSQLPASSWORD=devpass \
+  -e MYSQLDATABASE=oneiq \
   -e APP_ENV=development \
   oneiq
 
@@ -129,30 +142,6 @@ docker run -d \
 curl http://localhost:8080/health.php
 open http://localhost:8080/
 open http://localhost:8080/goal
-```
-
----
-
-## Local Development (PHP built-in server)
-
-```bash
-# 1. Install PHP 8.1+ with pdo_sqlite
-# macOS:  brew install php
-# Ubuntu: apt install php8.3-sqlite3
-
-# 2. Copy environment file
-cp .env.example .env
-# Edit .env: set SQLITE_DB_PATH=./database/oneiq.sqlite
-
-# 3. Initialize database
-php init_db.php
-
-# 4. Start server
-php -S localhost:8080
-
-# 5. Visit
-open http://localhost:8080/
-open http://localhost:8080/goal.html
 ```
 
 ---
@@ -166,6 +155,25 @@ open http://localhost:8080/goal.html
 | `https://your-app.railway.app/api.php` | JSON REST API |
 | `https://your-app.railway.app/health.php` | Health check (Railway probe) |
 | `https://your-app.railway.app/go?id=N` | Referer-stripping stream gateway |
+
+---
+
+## Environment Variables Reference
+
+| Variable | Required | Set By | Description |
+|----------|----------|--------|-------------|
+| `ADMIN_TOKEN` | ✅ | You | Bearer token for admin API. `openssl rand -hex 32` |
+| `ADMIN_PASSWORD` | ✅ | You | Admin panel login password |
+| `APP_ENV` | ❌ | You | `production` or `development`. Default: `production` |
+| `MYSQL_URL` | ✅* | Railway (auto) | Full MySQL connection URL |
+| `MYSQLHOST` | ✅* | Railway (auto) | MySQL hostname |
+| `MYSQLPORT` | ✅* | Railway (auto) | MySQL port |
+| `MYSQLUSER` | ✅* | Railway (auto) | MySQL username |
+| `MYSQLPASSWORD` | ✅* | Railway (auto) | MySQL password |
+| `MYSQLDATABASE` | ✅* | Railway (auto) | Database name |
+| `PORT` | Auto | Railway (auto) | HTTP port — set automatically, do not override |
+
+*\* Set automatically when you add the Railway MySQL plugin. Only one of `MYSQL_URL` or the individual `MYSQL*` vars is needed.*
 
 ---
 
@@ -198,40 +206,16 @@ curl -X POST https://your-app.railway.app/api.php \
   -d '{"match_name":"النهائي","team_a":"فرنسا","team_b":"البرازيل","match_time":"21:00","stream_link":"https://stream.example.com","is_live":true}'
 ```
 
-### `PUT /api.php?id=N` — Update match (admin)
-Same body as POST, add `?id=N` to URL.
-
-### `DELETE /api.php?id=N` — Delete match (admin)
-```bash
-curl -X DELETE https://your-app.railway.app/api.php?id=1 \
-  -H "Authorization: Bearer YOUR_ADMIN_TOKEN"
-```
-
----
-
-## Environment Variables Reference
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `ADMIN_TOKEN` | ✅ | Bearer token for admin API. Generate: `openssl rand -hex 32` |
-| `ADMIN_PASSWORD` | ✅ | Admin panel login password |
-| `SQLITE_DB_PATH` | ✅ on Railway | Path to SQLite file. Use `/data/oneiq.sqlite` on Railway |
-| `APP_ENV` | ❌ | `production` (strict CORS) or `development`. Default: `production` |
-| `PORT` | Auto | Set automatically by Railway. Do not set manually |
-
 ---
 
 ## Security Notes
 
-- Secrets are **never** in source code — read from environment variables only
-- `config.php`, `db.php`, `init_db.php` are blocked by Nginx (403)
-- `database/` directory is blocked by Nginx (403)
-- SQLite file has `0640` permissions
-- Admin login uses `hash_equals()` + random delay to resist timing/brute-force attacks
-- `stream_link` is validated as `http/https` before storing and before redirecting
-- In production, CORS is same-origin only (no wildcard `*`)
-- `go.php` validates stored URLs before redirecting (open-redirect protection)
-- `docker/` directory is blocked by Nginx (403)
+- Secrets never in source code — read from Railway environment variables
+- MySQL credentials injected automatically by Railway's MySQL plugin
+- `config.php`, `db.php`, `init_db.php` blocked by Nginx (403)
+- Admin login uses `hash_equals()` + random delay (timing/brute-force protection)
+- `stream_link` validated as `http/https` before storing and before redirecting
+- CORS locked to same-origin in production (`APP_ENV=production`)
 
 ---
 

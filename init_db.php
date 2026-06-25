@@ -1,56 +1,52 @@
 <?php
 /**
- * init_db.php — Database Initialization Script
+ * init_db.php — MySQL Database Initialization Script
  *
  * Usage:  php init_db.php
- * Called automatically by:
- *   - docker/entrypoint.sh on first Railway boot (when Volume is empty)
- *   - getDB() in db.php on first request if DB file missing
+ * Called automatically by docker/entrypoint.sh after MySQL is confirmed ready.
  *
  * Safe to run multiple times (idempotent — uses CREATE TABLE IF NOT EXISTS
- * and only seeds data when the table is empty).
+ * and seeds data only when the table is empty).
  */
 
 declare(strict_types=1);
 
-// ── Re-use the same path resolution as db.php ─────────────────
-$dbPath = getenv('SQLITE_DB_PATH') ?: (__DIR__ . '/database/oneiq.sqlite');
-$dbDir  = dirname($dbPath);
+require_once __DIR__ . '/db.php';
 
-echo "OneIQ — Database Initialization\n";
-echo "DB Path: {$dbPath}\n";
+echo "OneIQ — MySQL Database Initialization\n";
+echo str_repeat('─', 45) . "\n";
 
-// ── Create directory if needed ────────────────────────────────
-if (!is_dir($dbDir)) {
-    if (!mkdir($dbDir, 0750, true) && !is_dir($dbDir)) {
-        echo "❌ Error: Failed to create directory: {$dbDir}\n";
-        exit(1);
-    }
-    echo "✅ Created directory: {$dbDir}\n";
-}
+// ── Show connection info (no passwords) ───────────────────────
+$cfg = getMysqlConfig();
+echo "Host:     {$cfg['host']}:{$cfg['port']}\n";
+echo "Database: {$cfg['dbname']}\n";
+echo "User:     {$cfg['user']}\n";
+echo str_repeat('─', 45) . "\n";
 
 try {
-    $pdo = new PDO("sqlite:{$dbPath}");
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    $pdo->exec("PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; PRAGMA foreign_keys=ON;");
+    $pdo = getDB();
+    echo "✅ Connected to MySQL successfully.\n";
 
-    // ── Create tables ─────────────────────────────────────────
+    // ── Create matches table ──────────────────────────────────
     $pdo->exec("
         CREATE TABLE IF NOT EXISTS matches (
-            id          INTEGER PRIMARY KEY AUTOINCREMENT,
-            match_name  TEXT    NOT NULL,
-            team_a      TEXT    NOT NULL DEFAULT '',
-            team_b      TEXT    NOT NULL DEFAULT '',
-            match_time  TEXT    NOT NULL DEFAULT '',
-            stream_link TEXT    NOT NULL,
-            is_live     INTEGER NOT NULL DEFAULT 0,
-            created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
+            id          INT           NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            match_name  VARCHAR(255)  NOT NULL,
+            team_a      VARCHAR(100)  NOT NULL DEFAULT '',
+            team_b      VARCHAR(100)  NOT NULL DEFAULT '',
+            match_time  VARCHAR(50)   NOT NULL DEFAULT '',
+            stream_link VARCHAR(2000) NOT NULL,
+            is_live     TINYINT(1)    NOT NULL DEFAULT 0,
+            created_at  DATETIME      DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_is_live (is_live),
+            INDEX idx_created_at (created_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     ");
     echo "✅ Table 'matches' ready.\n";
 
     // ── Seed with demo data only if table is empty ────────────
     $count = (int)$pdo->query("SELECT COUNT(*) FROM matches")->fetchColumn();
+
     if ($count === 0) {
         echo "   Seeding demo data...\n";
         $stmt = $pdo->prepare("
@@ -71,14 +67,12 @@ try {
         echo "   Database already has {$count} matches — skipping seed.\n";
     }
 
-    // ── Secure the file ───────────────────────────────────────
-    if (file_exists($dbPath)) {
-        chmod($dbPath, 0640);
-    }
+    echo str_repeat('─', 45) . "\n";
+    echo "✅ Database initialization complete!\n";
 
-    echo "✅ Database initialized successfully!\n";
-    echo "   Path: {$dbPath}\n";
-
+} catch (PDOException $e) {
+    echo "❌ Database Error: " . $e->getMessage() . "\n";
+    exit(1);
 } catch (Exception $e) {
     echo "❌ Error: " . $e->getMessage() . "\n";
     exit(1);
