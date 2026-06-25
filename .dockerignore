@@ -1,0 +1,37 @@
+# ── Version control ───────────────────────────────────────────
+.git
+.gitignore
+
+# ── Environment / secrets ─────────────────────────────────────
+.env
+.env.local
+.env.*.local
+
+# ── Local database (never bake SQLite into image) ─────────────
+database/
+*.sqlite
+*.sqlite3
+*.db
+
+# ── Deployment artifacts (not needed in container) ────────────
+deploy.sh
+*.sh
+nginx.conf
+
+# ── Dev / build artifacts ─────────────────────────────────────
+node_modules/
+vendor/
+.DS_Store
+Thumbs.db
+
+# ── IDE / editor files ────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ── Log files ─────────────────────────────────────────────────
+*.log
+
+# ── Task / plan files ─────────────────────────────────────────
+task.md

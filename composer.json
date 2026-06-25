@@ -1,0 +1,14 @@
+{
+    "require": {
+        "php": ">=8.1"
+    },
+    "require-dev": {},
+    "config": {
+        "optimize-autoloader": true,
+        "preferred-install": "dist",
+        "sort-packages": true
+    },
+    "scripts": {
+        "init-db": "php init_db.php"
+    }
+}

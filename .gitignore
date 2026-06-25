@@ -1,0 +1,42 @@
+# ── Secrets — NEVER commit these ──────────────────────────────
+.env
+.env.local
+.env.*.local
+
+# ── Database files — data lives on Railway Volume, not in git ─
+database/
+*.sqlite
+*.sqlite3
+*.db
+
+# ── PHP dependencies ──────────────────────────────────────────
+vendor/
+
+# ── OS generated files ────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ── IDE / Editor ──────────────────────────────────────────────
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
+*~
+
+# ── Logs ──────────────────────────────────────────────────────
+*.log
+logs/
+
+# ── Build artifacts ───────────────────────────────────────────
+/node_modules/
+
+# ── Task tracking (local only) ────────────────────────────────
+task.md

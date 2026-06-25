@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#000000" />
+  <title>واحد العراق | بث مباشر كأس العالم</title>
+  <meta name="description" content="واحد العراق - قناة الأخبار الأولى. شاهد مباريات كأس العالم مباشرة بجودة عالية." />
+  <meta property="og:title" content="واحد العراق | بث مباشر كأس العالم" />
+  <meta property="og:description" content="شاهد مباريات كأس العالم مباشرة على قناة واحد العراق" />
+  <meta property="og:image" content="https://cdn.jsdelivr.net/gh/a9ii/MTProxy-Installer-Manager/images/oneIQ.webp" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+
+  <!-- ═══════════════════ BACKGROUND GEOMETRY ═══════════════════ -->
+  <div class="bg-geometry" aria-hidden="true">
+    <div class="geo-circle geo-circle--1"></div>
+    <div class="geo-circle geo-circle--2"></div>
+    <div class="geo-circle geo-circle--3"></div>
+    <div class="geo-semicircle geo-semi--top-right"></div>
+    <div class="geo-semicircle geo-semi--bottom-left"></div>
+    <div class="geo-ball geo-ball--1"></div>
+    <div class="geo-ball geo-ball--2"></div>
+    <div class="geo-grid"></div>
+  </div>
+
+  <!-- ═══════════════════ HEADER ════════════════════════════════ -->
+  <header class="site-header" id="top">
+    <div class="header-inner">
+      <div class="logo-wrap">
+        <div class="logo-ring">
+          <img
+            src="https://cdn.jsdelivr.net/gh/a9ii/MTProxy-Installer-Manager/images/oneIQ.webp"
+            alt="شعار واحد العراق"
+            class="logo-img"
+            id="main-logo"
+            loading="eager"
+          />
+          <div class="logo-pulse"></div>
+        </div>
+        <div class="logo-text">
+          <h1 class="brand-name">واحد العراق</h1>
+          <p class="brand-tagline">قناة الاخبار الاولى</p>
+        </div>
+      </div>
+
+      <div class="header-badges">
+        <span class="badge badge--live" id="live-badge">
+          <span class="live-dot"></span>
+          بث مباشر
+        </span>
+        <span class="badge badge--wc">كأس العالم 2026</span>
+        <a
+          href="https://t.me/IRAQ2TV"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="badge badge--tg"
+          id="tg-header-btn"
+          aria-label="قناة تيليغرام واحد العراق"
+        >
+          <svg class="tg-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+          </svg>
+          تيليغرام
+        </a>
+      </div>
+    </div>
+
+    <!-- Decorative red arc under header -->
+    <svg class="header-arc" viewBox="0 0 1440 60" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M0,60 Q720,0 1440,60" fill="none" stroke="#FF0000" stroke-width="2" opacity="0.5"/>
+      <path d="M0,60 Q720,10 1440,60" fill="none" stroke="#FF0000" stroke-width="0.5" opacity="0.3"/>
+    </svg>
+  </header>
+
+  <!-- ═══════════════════ HERO STRIP ════════════════════════════ -->
+  <section class="hero-strip">
+    <div class="hero-inner">
+      <div class="hero-icon" aria-hidden="true">⚽</div>
+      <div class="hero-text">
+        <h2 class="hero-title">المباريات المتاحة</h2>
+        <p class="hero-sub">اختر المباراة للمشاهدة الفورية</p>
+      </div>
+      <div class="hero-ticker" id="live-count-wrap">
+        <span class="ticker-val" id="live-count">0</span>
+        <span class="ticker-label">مباشر الآن</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════ MATCHES GRID ══════════════════════════ -->
+  <main class="matches-section" id="matches-section">
+    <div class="container">
+
+      <!-- Loading skeleton -->
+      <div class="matches-grid" id="matches-grid">
+        <div class="skeleton-card"></div>
+        <div class="skeleton-card"></div>
+        <div class="skeleton-card"></div>
+        <div class="skeleton-card"></div>
+      </div>
+
+      <!-- Error state -->
+      <div class="error-state hidden" id="error-state">
+        <div class="error-icon">⚠️</div>
+        <p class="error-msg">تعذّر تحميل المباريات. يُرجى إعادة المحاولة.</p>
+        <button class="btn-retry" onclick="loadMatches()">إعادة المحاولة</button>
+      </div>
+
+      <!-- Empty state -->
+      <div class="empty-state hidden" id="empty-state">
+        <div class="empty-icon">📅</div>
+        <p>لا توجد مباريات مجدولة حاليًا. تابعنا قريبًا!</p>
+        <a href="https://t.me/IRAQ2TV" target="_blank" rel="noopener noreferrer" class="tg-cta-btn" id="tg-empty-btn">
+          <svg class="tg-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+          </svg>
+          تابع قناتنا على تيليغرام
+        </a>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ═══════════════════ FOOTER ════════════════════════════════ -->
+  <footer class="site-footer">
+    <div class="footer-arc" aria-hidden="true">
+      <svg viewBox="0 0 1440 60" preserveAspectRatio="none">
+        <path d="M0,0 Q720,60 1440,0" fill="none" stroke="#FF0000" stroke-width="1.5" opacity="0.4"/>
+      </svg>
+    </div>
+    <div class="footer-inner">
+      <p class="footer-brand">واحد العراق &copy; <span id="year"></span></p>
+      <p class="footer-copy">جميع الحقوق محفوظة &bull; قناة الأخبار الأولى</p>
+      <a
+        href="https://t.me/IRAQ2TV"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="footer-tg-btn"
+        id="tg-footer-btn"
+        aria-label="انضم إلى قناة واحد العراق على تيليغرام"
+      >
+        <svg class="tg-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+        </svg>
+        انضم إلى قناتنا على تيليغرام
+      </a>
+    </div>
+  </footer>
+
+  <!-- ═══════════════════ STREAM MODAL ══════════════════════════ -->
+  <div class="modal-overlay hidden" id="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-glass">
+      <button class="modal-close" id="modal-close" aria-label="إغلاق">✕</button>
+      <div class="modal-header">
+        <span class="modal-ball" aria-hidden="true">⚽</span>
+        <h3 class="modal-title" id="modal-title">اسم المباراة</h3>
+      </div>
+      <div class="modal-teams" id="modal-teams"></div>
+      <div class="modal-time" id="modal-time"></div>
+      <a class="modal-watch-btn" id="modal-watch-btn" href="#" target="_blank" rel="noopener">
+        <span class="btn-icon">▶</span>
+        شاهد البث المباشر
+      </a>
+    </div>
+  </div>
+
+  <script src="assets/js/main.js"></script>
+</body>
+</html>
