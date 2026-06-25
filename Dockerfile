@@ -17,11 +17,18 @@ RUN apk add --no-cache \
         nginx \
         supervisor \
         sqlite \
-        gettext \
-    && rm -rf /var/cache/apk/*
+        gettext
 
 # ── Install PHP extensions ────────────────────────────────────
-RUN docker-php-ext-install pdo pdo_sqlite
+# sqlite-dev provides the C headers required to compile pdo_sqlite.
+# We tag it as a virtual package so we can remove the build-time
+# headers after compilation, keeping the final image lean.
+# NOTE: 'pdo' is already compiled into php:8.3-fpm-alpine — do NOT
+#       list it here or you will get a "already loaded" error.
+RUN apk add --no-cache --virtual .phpize-deps-pdo sqlite-dev \
+    && docker-php-ext-install pdo_sqlite \
+    && apk del .phpize-deps-pdo \
+    && rm -rf /var/cache/apk/*
 
 # ── PHP configuration ─────────────────────────────────────────
 COPY docker/php.ini /usr/local/etc/php/conf.d/oneiq.ini
