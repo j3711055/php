@@ -1,0 +1,60 @@
+version: "3.9"
+
+# ══════════════════════════════════════════════════════════════
+#  OneIQ — Local Development with Docker Compose
+#  Usage:  docker compose up --build
+#  App:    http://localhost:8080/
+#  Admin:  http://localhost:8080/goal
+# ══════════════════════════════════════════════════════════════
+
+services:
+
+  # ── MySQL Database ─────────────────────────────────────────
+  db:
+    image: mysql:8.0
+    container_name: oneiq-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: devpass
+      MYSQL_DATABASE: oneiq
+      MYSQL_CHARACTER_SET_SERVER: utf8mb4
+      MYSQL_COLLATION_SERVER: utf8mb4_unicode_ci
+    ports:
+      - "3306:3306"
+    volumes:
+      - oneiq-db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pdevpass"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  # ── OneIQ Application ──────────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: oneiq-app
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      # ── App secrets (change these!) ──────────────────────
+      ADMIN_TOKEN: dev-token-change-me-in-production
+      ADMIN_PASSWORD: dev-password-change-me-in-production
+      APP_ENV: development
+      PORT: 8080
+      # ── MySQL connection (matches the db service above) ──
+      MYSQLHOST: db
+      MYSQLPORT: 3306
+      MYSQLUSER: root
+      MYSQLPASSWORD: devpass
+      MYSQLDATABASE: oneiq
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  oneiq-db-data:
+    driver: local

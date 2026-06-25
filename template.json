@@ -1,0 +1,50 @@
+{
+  "$schema": "https://railway.app/template.schema.json",
+  "displayName": "واحد العراق — OneIQ PHP Streaming",
+  "description": "Arabic sports streaming platform. PHP 8.3 + MySQL + Nginx. Live match dashboard, admin panel, referer-stripping stream gateway. Production-ready for Railway.",
+  "tags": ["php", "mysql", "nginx", "arabic", "streaming", "sports"],
+  "icon": "https://cdn.jsdelivr.net/gh/a9ii/MTProxy-Installer-Manager/images/oneIQ.webp",
+  "readme": "https://raw.githubusercontent.com/YOUR_USERNAME/oneiq/main/README.md",
+  "services": [
+    {
+      "name": "OneIQ App",
+      "description": "PHP 8.3 + Nginx web application",
+      "build": {
+        "builder": "DOCKERFILE",
+        "dockerfilePath": "Dockerfile"
+      },
+      "deploy": {
+        "startCommand": "/bin/sh /entrypoint.sh",
+        "healthcheckPath": "/health.php",
+        "healthcheckTimeout": 300,
+        "restartPolicyType": "ON_FAILURE",
+        "restartPolicyMaxRetries": 5
+      },
+      "variables": [
+        {
+          "name": "ADMIN_TOKEN",
+          "description": "Bearer token for admin API authentication. Generate with: openssl rand -hex 32",
+          "required": true,
+          "isSecret": true
+        },
+        {
+          "name": "ADMIN_PASSWORD",
+          "description": "Password for the admin dashboard login. Use a strong password.",
+          "required": true,
+          "isSecret": true
+        },
+        {
+          "name": "APP_ENV",
+          "description": "Application environment. Use 'production' on Railway.",
+          "required": false,
+          "defaultValue": "production"
+        }
+      ]
+    },
+    {
+      "name": "MySQL",
+      "description": "MySQL 8.0 database for storing match data",
+      "type": "mysql"
+    }
+  ]
+}
