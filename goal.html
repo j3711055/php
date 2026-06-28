@@ -87,35 +87,76 @@
               />
             </div>
 
-            <div class="form-row">
-              <div class="form-group">
-                <label class="form-label" for="f-team-a">الفريق الأول</label>
-                <input type="text" id="f-team-a" class="form-input" placeholder="البرازيل" />
-              </div>
-              <div class="form-group">
-                <label class="form-label" for="f-team-b">الفريق الثاني</label>
-                <input type="text" id="f-team-b" class="form-input" placeholder="الأرجنتين" />
+            <div class="form-group">
+              <label class="form-label">طريقة التشغيل</label>
+              <div style="display:flex;gap:1.5rem;margin-top:0.4rem;padding:0.75rem 1rem;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:var(--radius-lg);">
+                <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;">
+                  <input type="radio" name="f-player-type" value="default" checked style="accent-color:var(--red);" />
+                  <span style="font-size:0.85rem;">الطريقة الحالية (Default)</span>
+                </label>
+                <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;">
+                  <input type="radio" name="f-player-type" value="m3u8" style="accent-color:var(--red);" />
+                  <span style="font-size:0.85rem;">مشغل M3U8 الجديد</span>
+                </label>
               </div>
             </div>
 
-            <div class="form-group">
-              <label class="form-label" for="f-time">وقت المباراة</label>
-              <input
-                type="text" id="f-time"
-                class="form-input"
-                placeholder="21:00 بتوقيت بغداد"
-              />
+            <div id="classic-settings">
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label" for="f-team-a">الفريق الأول</label>
+                  <input type="text" id="f-team-a" class="form-input" placeholder="البرازيل" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="f-team-b">الفريق الثاني</label>
+                  <input type="text" id="f-team-b" class="form-input" placeholder="الأرجنتين" />
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="f-time">وقت المباراة</label>
+                <input
+                  type="text" id="f-time"
+                  class="form-input"
+                  placeholder="21:00 بتوقيت بغداد"
+                />
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="f-link">رابط البث المباشر *</label>
+                <input
+                  type="url" id="f-link"
+                  class="form-input"
+                  placeholder="https://stream.example.com/live"
+                  dir="ltr"
+                  required
+                />
+              </div>
             </div>
 
-            <div class="form-group">
-              <label class="form-label" for="f-link">رابط البث المباشر *</label>
-              <input
-                type="url" id="f-link"
-                class="form-input"
-                placeholder="https://stream.example.com/live"
-                dir="ltr"
-                required
-              />
+            <div id="m3u8-settings" class="hidden">
+              <div class="form-group">
+                <label class="form-label" for="f-group-name">اسم المجموعة</label>
+                <input type="text" id="f-group-name" class="form-input" placeholder="مثال: BeIN Sports" />
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="f-logo-url">رابط صورة الشعار</label>
+                <input type="url" id="f-logo-url" class="form-input" placeholder="https://example.com/logo.png" dir="ltr" />
+                <div id="logo-preview-wrap" style="margin-top:0.5rem;display:none;">
+                  <img id="logo-preview" src="" alt="شعار القناة" style="max-height:50px;border-radius:6px;border:1px solid var(--glass-bdr);padding:2px;background:rgba(0,0,0,0.5);" />
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">الجودات المتاحة</label>
+                <div id="qualities-list" style="display:flex;flex-direction:column;gap:0.6rem;margin-bottom:0.6rem;">
+                  <!-- Dynamic Quality Rows -->
+                </div>
+                <button type="button" class="btn-secondary" id="btn-add-quality" style="width:100%;padding:0.6rem;font-size:0.8rem;border-style:dashed;border-color:rgba(255,255,255,0.2);">
+                  ➕ إضافة جودة
+                </button>
+              </div>
             </div>
 
             <div class="form-group">
