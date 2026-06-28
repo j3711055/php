@@ -42,6 +42,84 @@ const MAX_LINK_LEN  = 2000;
 const MAX_TEAM_LEN  = 100;
 const MAX_TIME_LEN  = 50;
 
+// ── Admin authentication ───────────────────────────────────────
+function requireAdmin(): void
+{
+    $authHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+    // Support both "Bearer TOKEN" and just "TOKEN"
+    $token = trim(str_replace('Bearer', '', $authHeader));
+
+    if ($token === '' || !hash_equals(ADMIN_TOKEN, $token)) {
+        jsonResponse(['success' => false, 'error' => 'Unauthorised'], 401);
+    }
+}
+
+// ── Helper: parse and validate body ───────────────────────────
+function parseMatchBody(): array
+{
+    $raw  = file_get_contents('php://input');
+    $body = json_decode($raw, true) ?? [];
+
+    $name = mb_substr(trim($body['match_name'] ?? ''), 0, MAX_NAME_LEN);
+    $a    = mb_substr(trim($body['team_a']      ?? ''), 0, MAX_TEAM_LEN);
+    $b    = mb_substr(trim($body['team_b']      ?? ''), 0, MAX_TEAM_LEN);
+    $t    = mb_substr(trim($body['match_time']  ?? ''), 0, MAX_TIME_LEN);
+    $live = isset($body['is_live']) ? (int)(bool)$body['is_live'] : 0;
+
+    // New fields
+    $player_type  = mb_substr(trim($body['player_type'] ?? 'default'), 0, 50);
+    $channel_logo = mb_substr(trim($body['channel_logo'] ?? ''), 0, 2000);
+
+    // Validate player_type
+    if (!in_array($player_type, ['default', 'm3u8'], true)) {
+        $player_type = 'default';
+    }
+
+    $qualities = [];
+    if ($player_type === 'm3u8') {
+        $qualities_input = $body['qualities'] ?? [];
+        if (is_array($qualities_input)) {
+            foreach ($qualities_input as $q) {
+                $q_title = mb_substr(trim($q['title'] ?? ''), 0, 100);
+                $q_url   = mb_substr(trim($q['url']   ?? ''), 0, 2000);
+                if ($q_title !== '' && $q_url !== '') {
+                    if (!isValidStreamUrl($q_url)) {
+                        jsonResponse(['success' => false, 'error' => "Quality URL '{$q_url}' must be a valid http/https URL"], 422);
+                    }
+                    $qualities[] = [
+                        'title' => $q_title,
+                        'url'   => $q_url
+                    ];
+                }
+            }
+        }
+
+        if (empty($qualities)) {
+            jsonResponse(['success' => false, 'error' => 'At least one quality is required for M3U8 Player'], 422);
+        }
+        // Set stream_link to the first quality url to satisfy database constraints
+        $link = $qualities[0]['url'];
+
+        if ($channel_logo !== '' && !isValidStreamUrl($channel_logo)) {
+            jsonResponse(['success' => false, 'error' => 'channel_logo must be a valid http/https URL'], 422);
+        }
+    } else {
+        $link = mb_substr(trim($body['stream_link'] ?? ''), 0, MAX_LINK_LEN);
+        if (!$link) {
+            jsonResponse(['success' => false, 'error' => 'stream_link is required'], 422);
+        }
+        if (!isValidStreamUrl($link)) {
+            jsonResponse(['success' => false, 'error' => 'stream_link must be a valid http/https URL'], 422);
+        }
+    }
+
+    if (!$name) {
+        jsonResponse(['success' => false, 'error' => 'match_name is required'], 422);
+    }
+
+    return compact('name', 'a', 'b', 't', 'link', 'live', 'player_type', 'channel_logo', 'qualities');
+}
+
 // ── Public endpoint: list all matches ─────────────────────────
 try {
     // ── Public endpoint: list all matches ─────────────────────────
@@ -157,7 +235,7 @@ try {
 
 } catch (PDOException $e) {
     jsonResponse(['success' => false, 'error' => 'Database error: ' . $e->getMessage()], 500);
-} catch (Exception $e) {
+} catch (Throwable $e) {
     jsonResponse(['success' => false, 'error' => 'Server error: ' . $e->getMessage()], 500);
 }
 
