@@ -96,6 +96,33 @@
   <main class="matches-section" id="matches-section">
     <div class="container">
 
+      <!-- M3U8 Player Section (Hidden by default) -->
+      <div id="player-section" class="player-card hidden">
+        <button class="player-close" id="player-close-btn" aria-label="إغلاق المشغل">✕</button>
+        
+        <!-- Video Wrapper -->
+        <div class="video-container">
+          <video id="hls-video" controls playsinline></video>
+          <!-- Watermark logo -->
+          <img id="player-watermark" class="watermark-logo hidden" src="" alt="شعار القناة" />
+        </div>
+        
+        <!-- Stream Info & Qualities -->
+        <div class="player-info">
+          <div class="player-meta">
+            <span id="player-group" class="player-group-badge hidden"></span>
+            <h2 id="player-channel-name" class="player-title"></h2>
+          </div>
+          
+          <div class="player-qualities">
+            <span class="qualities-label">الجودة:</span>
+            <div id="player-qualities-list" class="qualities-btn-group">
+              <!-- Dynamic buttons -->
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Loading skeleton -->
       <div class="matches-grid" id="matches-grid">
         <div class="skeleton-card"></div>
@@ -169,6 +196,8 @@
     </div>
   </div>
 
+  <!-- HLS.js Library for M3U8 streaming support -->
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.8/dist/hls.min.js"></script>
   <script src="assets/js/main.js"></script>
 </body>
 </html>
