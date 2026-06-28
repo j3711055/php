@@ -46,10 +46,19 @@ const MAX_TIME_LEN  = 50;
 if ($method === 'GET') {
     $db   = getDB();
     $rows = $db->query(
-        "SELECT id, match_name, team_a, team_b, match_time, stream_link, is_live, created_at
+        "SELECT id, match_name, team_a, team_b, match_time, stream_link, is_live, player_type, channel_logo, qualities, created_at
          FROM matches
          ORDER BY is_live DESC, id DESC"
     )->fetchAll();
+
+    foreach ($rows as &$row) {
+        if (isset($row['qualities']) && is_string($row['qualities'])) {
+            $row['qualities'] = json_decode($row['qualities'], true) ?? [];
+        } else {
+            $row['qualities'] = [];
+        }
+    }
+    unset($row);
 
     jsonResponse(['success' => true, 'matches' => $rows]);
 }
@@ -76,33 +85,83 @@ function parseMatchBody(): array
     $a    = mb_substr(trim($body['team_a']      ?? ''), 0, MAX_TEAM_LEN);
     $b    = mb_substr(trim($body['team_b']      ?? ''), 0, MAX_TEAM_LEN);
     $t    = mb_substr(trim($body['match_time']  ?? ''), 0, MAX_TIME_LEN);
-    $link = mb_substr(trim($body['stream_link'] ?? ''), 0, MAX_LINK_LEN);
     $live = isset($body['is_live']) ? (int)(bool)$body['is_live'] : 0;
+
+    // New fields
+    $player_type  = mb_substr(trim($body['player_type'] ?? 'default'), 0, 50);
+    $channel_logo = mb_substr(trim($body['channel_logo'] ?? ''), 0, 2000);
+
+    // Validate player_type
+    if (!in_array($player_type, ['default', 'm3u8'], true)) {
+        $player_type = 'default';
+    }
+
+    $qualities = [];
+    if ($player_type === 'm3u8') {
+        $qualities_input = $body['qualities'] ?? [];
+        if (is_array($qualities_input)) {
+            foreach ($qualities_input as $q) {
+                $q_title = mb_substr(trim($q['title'] ?? ''), 0, 100);
+                $q_url   = mb_substr(trim($q['url']   ?? ''), 0, 2000);
+                if ($q_title !== '' && $q_url !== '') {
+                    if (!isValidStreamUrl($q_url)) {
+                        jsonResponse(['success' => false, 'error' => "Quality URL '{$q_url}' must be a valid http/https URL"], 422);
+                    }
+                    $qualities[] = [
+                        'title' => $q_title,
+                        'url'   => $q_url
+                    ];
+                }
+            }
+        }
+
+        if (empty($qualities)) {
+            jsonResponse(['success' => false, 'error' => 'At least one quality is required for M3U8 Player'], 422);
+        }
+        // Set stream_link to the first quality url to satisfy database constraints
+        $link = $qualities[0]['url'];
+
+        if ($channel_logo !== '' && !isValidStreamUrl($channel_logo)) {
+            jsonResponse(['success' => false, 'error' => 'channel_logo must be a valid http/https URL'], 422);
+        }
+    } else {
+        $link = mb_substr(trim($body['stream_link'] ?? ''), 0, MAX_LINK_LEN);
+        if (!$link) {
+            jsonResponse(['success' => false, 'error' => 'stream_link is required'], 422);
+        }
+        if (!isValidStreamUrl($link)) {
+            jsonResponse(['success' => false, 'error' => 'stream_link must be a valid http/https URL'], 422);
+        }
+    }
 
     if (!$name) {
         jsonResponse(['success' => false, 'error' => 'match_name is required'], 422);
     }
-    if (!$link) {
-        jsonResponse(['success' => false, 'error' => 'stream_link is required'], 422);
-    }
-    if (!isValidStreamUrl($link)) {
-        jsonResponse(['success' => false, 'error' => 'stream_link must be a valid http/https URL'], 422);
-    }
 
-    return compact('name', 'a', 'b', 't', 'link', 'live');
+    return compact('name', 'a', 'b', 't', 'link', 'live', 'player_type', 'channel_logo', 'qualities');
 }
 
 // ── POST: create match ────────────────────────────────────────
 if ($method === 'POST') {
     requireAdmin();
-    ['name' => $name, 'a' => $a, 'b' => $b, 't' => $t, 'link' => $link, 'live' => $live] = parseMatchBody();
+    ['name' => $name, 'a' => $a, 'b' => $b, 't' => $t, 'link' => $link, 'live' => $live, 'player_type' => $player_type, 'channel_logo' => $channel_logo, 'qualities' => $qualities] = parseMatchBody();
 
     $db   = getDB();
     $stmt = $db->prepare(
-        "INSERT INTO matches (match_name, team_a, team_b, match_time, stream_link, is_live)
-         VALUES (:n, :a, :b, :t, :l, :live)"
+        "INSERT INTO matches (match_name, team_a, team_b, match_time, stream_link, is_live, player_type, channel_logo, qualities)
+         VALUES (:n, :a, :b, :t, :l, :live, :player_type, :channel_logo, :qualities)"
     );
-    $stmt->execute([':n' => $name, ':a' => $a, ':b' => $b, ':t' => $t, ':l' => $link, ':live' => $live]);
+    $stmt->execute([
+        ':n'            => $name,
+        ':a'            => $a,
+        ':b'            => $b,
+        ':t'            => $t,
+        ':l'            => $link,
+        ':live'         => $live,
+        ':player_type'  => $player_type,
+        ':channel_logo' => $channel_logo,
+        ':qualities'    => json_encode($qualities, JSON_UNESCAPED_UNICODE)
+    ]);
 
     jsonResponse(['success' => true, 'id' => (int)$db->lastInsertId()], 201);
 }
@@ -114,15 +173,27 @@ if ($method === 'PUT') {
         jsonResponse(['success' => false, 'error' => 'id required'], 422);
     }
 
-    ['name' => $name, 'a' => $a, 'b' => $b, 't' => $t, 'link' => $link, 'live' => $live] = parseMatchBody();
+    ['name' => $name, 'a' => $a, 'b' => $b, 't' => $t, 'link' => $link, 'live' => $live, 'player_type' => $player_type, 'channel_logo' => $channel_logo, 'qualities' => $qualities] = parseMatchBody();
 
     $db   = getDB();
     $stmt = $db->prepare(
         "UPDATE matches
-         SET match_name=:n, team_a=:a, team_b=:b, match_time=:t, stream_link=:l, is_live=:live
+         SET match_name=:n, team_a=:a, team_b=:b, match_time=:t, stream_link=:l, is_live=:live,
+             player_type=:player_type, channel_logo=:channel_logo, qualities=:qualities
          WHERE id=:id"
     );
-    $stmt->execute([':n' => $name, ':a' => $a, ':b' => $b, ':t' => $t, ':l' => $link, ':live' => $live, ':id' => $id]);
+    $stmt->execute([
+        ':n'            => $name,
+        ':a'            => $a,
+        ':b'            => $b,
+        ':t'            => $t,
+        ':l'            => $link,
+        ':live'         => $live,
+        ':player_type'  => $player_type,
+        ':channel_logo' => $channel_logo,
+        ':qualities'    => json_encode($qualities, JSON_UNESCAPED_UNICODE),
+        ':id'           => $id
+    ]);
 
     if ($stmt->rowCount() === 0) {
         jsonResponse(['success' => false, 'error' => 'Match not found'], 404);
