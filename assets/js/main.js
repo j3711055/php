@@ -16,6 +16,15 @@ const modalTeams = document.getElementById('modal-teams');
 const modalTime  = document.getElementById('modal-time');
 const modalBtn   = document.getElementById('modal-watch-btn');
 
+/* M3U8 Player refs */
+const playerSection       = document.getElementById('player-section');
+const videoElement         = document.getElementById('hls-video');
+const playerWatermark     = document.getElementById('player-watermark');
+const playerGroupName     = document.getElementById('player-group');
+const playerChannelName   = document.getElementById('player-channel-name');
+const playerQualitiesList = document.getElementById('player-qualities-list');
+const playerCloseBtn      = document.getElementById('player-close-btn');
+
 /* ── Year ─────────────────────────────────────────────────── */
 document.getElementById('year').textContent = new Date().getFullYear();
 
@@ -64,8 +73,14 @@ function renderCard(match, index) {
     </button>
   `;
 
-  /* Open modal on click */
-  const open = () => openModal(match);
+  /* Open player or modal on click */
+  const open = () => {
+    if (match.player_type === 'm3u8') {
+      playM3U8Stream(match);
+    } else {
+      openModal(match);
+    }
+  };
   card.addEventListener('click', open);
   card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') open(); });
 
@@ -153,3 +168,118 @@ loadMatches();
 
 /* Auto-refresh every 60 s to catch new live matches */
 setInterval(loadMatches, 60_000);
+
+/* ── M3U8 Streaming Player Logic ──────────────────────────── */
+let hlsInstance = null;
+let currentMatch = null;
+let activeQualityUrl = '';
+
+function playM3U8Stream(match) {
+  // Close any existing player first
+  closePlayer();
+
+  currentMatch = match;
+  
+  // Set metadata
+  playerChannelName.textContent = match.match_name;
+  if (match.team_a) {
+    playerGroupName.textContent = match.team_a;
+    playerGroupName.classList.remove('hidden');
+  } else {
+    playerGroupName.classList.add('hidden');
+  }
+
+  // Set watermark logo
+  if (match.channel_logo) {
+    playerWatermark.src = match.channel_logo;
+    playerWatermark.classList.remove('hidden');
+  } else {
+    playerWatermark.classList.add('hidden');
+  }
+
+  // Render quality buttons
+  playerQualitiesList.innerHTML = '';
+  const qualities = match.qualities || [];
+  
+  if (qualities.length > 0) {
+    qualities.forEach((q, idx) => {
+      const btn = document.createElement('button');
+      btn.className = 'quality-btn' + (idx === 0 ? ' quality-btn--active' : '');
+      btn.textContent = q.title;
+      btn.addEventListener('click', () => {
+        if (activeQualityUrl === q.url) return;
+        
+        // Remove active class from all
+        playerQualitiesList.querySelectorAll('.quality-btn').forEach(b => b.classList.remove('quality-btn--active'));
+        btn.classList.add('quality-btn--active');
+        
+        loadM3U8Url(q.url);
+      });
+      playerQualitiesList.appendChild(btn);
+    });
+    
+    // Load first quality
+    activeQualityUrl = qualities[0].url;
+    loadM3U8Url(activeQualityUrl, false);
+  }
+
+  // Show player section
+  playerSection.classList.remove('hidden');
+  
+  // Scroll to player
+  playerSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function loadM3U8Url(url, preserveTime = true) {
+  const video = videoElement;
+  const seekTime = preserveTime ? video.currentTime : 0;
+
+  activeQualityUrl = url;
+
+  if (Hls.isSupported()) {
+    if (!hlsInstance) {
+      hlsInstance = new Hls({
+        enableWorker: true,
+        lowLatencyMode: true
+      });
+      hlsInstance.attachMedia(video);
+    }
+    
+    hlsInstance.loadSource(url);
+    
+    hlsInstance.once(Hls.Events.MANIFEST_PARSED, () => {
+      if (seekTime > 0) {
+        video.currentTime = seekTime;
+      }
+      video.play().catch(e => console.log('Autoplay blocked:', e));
+    });
+  } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+    // Safari / iOS Native player
+    video.src = url;
+    video.addEventListener('loadedmetadata', function onLoaded() {
+      if (seekTime > 0) {
+        video.currentTime = seekTime;
+      }
+      video.play().catch(e => console.log('Autoplay blocked:', e));
+      video.removeEventListener('loadedmetadata', onLoaded);
+    });
+  }
+}
+
+function closePlayer() {
+  const video = videoElement;
+  video.pause();
+  video.removeAttribute('src');
+  video.load();
+
+  if (hlsInstance) {
+    hlsInstance.destroy();
+    hlsInstance = null;
+  }
+  
+  playerSection.classList.add('hidden');
+  currentMatch = null;
+  activeQualityUrl = '';
+}
+
+playerCloseBtn.addEventListener('click', closePlayer);
