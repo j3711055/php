@@ -31,6 +31,74 @@ const liveToggle   = document.getElementById('f-live');
 const cancelBtn    = document.getElementById('cancel-btn');
 const submitBtn    = document.getElementById('submit-btn');
 
+// New M3U8 settings DOM refs
+const classicSettings = document.getElementById('classic-settings');
+const m3u8Settings    = document.getElementById('m3u8-settings');
+const groupNameInput  = document.getElementById('f-group-name');
+const logoUrlInput    = document.getElementById('f-logo-url');
+const logoPreviewWrap = document.getElementById('logo-preview-wrap');
+const logoPreview     = document.getElementById('logo-preview');
+const qualitiesList   = document.getElementById('qualities-list');
+const btnAddQuality   = document.getElementById('btn-add-quality');
+
+function togglePlayerTypeFields(type) {
+  if (type === 'm3u8') {
+    classicSettings.classList.add('hidden');
+    m3u8Settings.classList.remove('hidden');
+    linkInput.removeAttribute('required');
+  } else {
+    classicSettings.classList.remove('hidden');
+    m3u8Settings.classList.add('hidden');
+    linkInput.setAttribute('required', '');
+  }
+}
+
+// Add event listener for radio change
+document.querySelectorAll('input[name="f-player-type"]').forEach(radio => {
+  radio.addEventListener('change', e => {
+    togglePlayerTypeFields(e.target.value);
+  });
+});
+
+// Logo preview helper
+logoUrlInput.addEventListener('input', () => {
+  const url = logoUrlInput.value.trim();
+  if (url) {
+    logoPreview.src = url;
+    logoPreviewWrap.style.display = 'block';
+  } else {
+    logoPreviewWrap.style.display = 'none';
+  }
+});
+logoPreview.addEventListener('error', () => {
+  logoPreviewWrap.style.display = 'none';
+});
+
+function addQualityRow(title = '', url = '') {
+  const row = document.createElement('div');
+  row.className = 'quality-row';
+  row.style.display = 'flex';
+  row.style.gap = '0.5rem';
+  row.style.alignItems = 'center';
+  row.style.marginBottom = '0.4rem';
+  
+  row.innerHTML = `
+    <input type="text" placeholder="الجودة (مثال: FHD)" class="form-input q-title" value="${esc(title)}" style="flex: 1;" required />
+    <input type="url" placeholder="رابط البث (.m3u8)" class="form-input q-url" value="${esc(url)}" style="flex: 2; font-family: monospace;" dir="ltr" required />
+    <button type="button" class="btn-delete btn-remove-quality" style="padding: 0.75rem 1rem; border-radius: var(--radius-lg); flex-shrink: 0; line-height: 1;">حذف</button>
+  `;
+  
+  row.querySelector('.btn-remove-quality').addEventListener('click', () => {
+    row.remove();
+  });
+  
+  qualitiesList.appendChild(row);
+}
+
+btnAddQuality.addEventListener('click', () => {
+  addQualityRow();
+});
+
 /* ── Toast ────────────────────────────────────────────────── */
 const toast = document.getElementById('toast');
 let toastTimer;
@@ -114,10 +182,15 @@ function renderList(matches) {
     const isLive = parseInt(m.is_live) === 1;
     const item   = document.createElement('div');
     item.className = 'match-item' + (isLive ? ' match-item--live' : '');
+    
+    const infoText = m.player_type === 'm3u8' 
+      ? `<span class="live-pill" style="background:rgba(232,255,0,0.1); border-color:var(--yellow); color:var(--yellow);">مشغل M3U8</span>` + (m.team_a ? ` <span style="color:rgba(255,255,255,0.6);">${esc(m.team_a)}</span>` : '')
+      : `${m.team_a && m.team_b ? esc(m.team_a)+' ⚽ '+esc(m.team_b) : '—'} ${m.match_time ? '| '+esc(m.match_time) : ''}`;
+
     item.innerHTML = `
       <div class="match-item-info">
         <div class="match-item-name" title="${esc(m.match_name)}">${esc(m.match_name)}</div>
-        <div class="match-item-teams">${m.team_a && m.team_b ? esc(m.team_a)+' ⚽ '+esc(m.team_b) : '—'} ${m.match_time ? '| '+esc(m.match_time) : ''}</div>
+        <div class="match-item-teams">${infoText}</div>
       </div>
       ${isLive ? '<span class="live-pill">مباشر</span>' : ''}
       <div class="match-item-actions">
@@ -142,6 +215,14 @@ function resetForm() {
   form.reset();
   editIdInput.value   = '';
   liveToggle.checked  = false;
+  
+  // Reset M3U8 settings
+  qualitiesList.innerHTML = '';
+  logoPreviewWrap.style.display = 'none';
+  const defaultRadio = document.querySelector('input[name="f-player-type"][value="default"]');
+  if (defaultRadio) defaultRadio.checked = true;
+  togglePlayerTypeFields('default');
+
   formTitle.textContent = '➕ إضافة مباراة جديدة';
   submitBtn.textContent = 'إضافة المباراة';
   cancelBtn.classList.add('hidden');
@@ -151,11 +232,35 @@ function resetForm() {
 function populateForm(m) {
   editIdInput.value   = m.id;
   nameInput.value     = m.match_name;
-  teamAInput.value    = m.team_a    || '';
-  teamBInput.value    = m.team_b    || '';
-  timeInput.value     = m.match_time || '';
-  linkInput.value     = m.stream_link;
   liveToggle.checked  = parseInt(m.is_live) === 1;
+
+  const playerType = m.player_type || 'default';
+  const typeRadio = document.querySelector(`input[name="f-player-type"][value="${playerType}"]`);
+  if (typeRadio) typeRadio.checked = true;
+  togglePlayerTypeFields(playerType);
+
+  if (playerType === 'm3u8') {
+    groupNameInput.value = m.team_a || '';
+    logoUrlInput.value   = m.channel_logo || '';
+    if (m.channel_logo) {
+      logoPreview.src = m.channel_logo;
+      logoPreviewWrap.style.display = 'block';
+    } else {
+      logoPreviewWrap.style.display = 'none';
+    }
+    
+    qualitiesList.innerHTML = '';
+    const qualities = m.qualities || [];
+    qualities.forEach(q => {
+      addQualityRow(q.title, q.url);
+    });
+  } else {
+    teamAInput.value    = m.team_a    || '';
+    teamBInput.value    = m.team_b    || '';
+    timeInput.value     = m.match_time || '';
+    linkInput.value     = m.stream_link;
+  }
+
   formTitle.textContent = '✏️ تعديل المباراة';
   submitBtn.textContent = 'حفظ التعديلات';
   cancelBtn.classList.remove('hidden');
@@ -168,18 +273,51 @@ cancelBtn.addEventListener('click', resetForm);
 form.addEventListener('submit', async e => {
   e.preventDefault();
   const id   = editIdInput.value;
+  const playerRadio = document.querySelector('input[name="f-player-type"]:checked');
+  const playerType = playerRadio ? playerRadio.value : 'default';
+  
   const body = {
     match_name:  nameInput.value.trim(),
-    team_a:      teamAInput.value.trim(),
-    team_b:      teamBInput.value.trim(),
-    match_time:  timeInput.value.trim(),
-    stream_link: linkInput.value.trim(),
     is_live:     liveToggle.checked,
+    player_type: playerType
   };
 
-  if (!body.match_name || !body.stream_link) {
-    showToast('اسم المباراة ورابط البث إلزاميان', 'error');
-    return;
+  if (playerType === 'm3u8') {
+    body.team_a = groupNameInput.value.trim(); // group name
+    body.team_b = '';
+    body.match_time = '';
+    body.channel_logo = logoUrlInput.value.trim();
+    
+    // Read dynamic qualities
+    const rows = qualitiesList.querySelectorAll('.quality-row');
+    const qualities = [];
+    rows.forEach(row => {
+      const title = row.querySelector('.q-title').value.trim();
+      const url = row.querySelector('.q-url').value.trim();
+      if (title && url) {
+        qualities.push({ title, url });
+      }
+    });
+    body.qualities = qualities;
+
+    if (!body.match_name) {
+      showToast('اسم القناة إلزامي', 'error');
+      return;
+    }
+    if (qualities.length === 0) {
+      showToast('يجب إضافة جودة واحدة على الأقل للمشغل الجديد', 'error');
+      return;
+    }
+  } else {
+    body.team_a      = teamAInput.value.trim();
+    body.team_b      = teamBInput.value.trim();
+    body.match_time  = timeInput.value.trim();
+    body.stream_link = linkInput.value.trim();
+
+    if (!body.match_name || !body.stream_link) {
+      showToast('اسم المباراة ورابط البث إلزاميان', 'error');
+      return;
+    }
   }
 
   submitBtn.disabled = true;
