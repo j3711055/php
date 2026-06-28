@@ -30,19 +30,37 @@ try {
     // ── Create matches table ──────────────────────────────────
     $pdo->exec("
         CREATE TABLE IF NOT EXISTS matches (
-            id          INT           NOT NULL AUTO_INCREMENT PRIMARY KEY,
-            match_name  VARCHAR(255)  NOT NULL,
-            team_a      VARCHAR(100)  NOT NULL DEFAULT '',
-            team_b      VARCHAR(100)  NOT NULL DEFAULT '',
-            match_time  VARCHAR(50)   NOT NULL DEFAULT '',
-            stream_link VARCHAR(2000) NOT NULL,
-            is_live     TINYINT(1)    NOT NULL DEFAULT 0,
-            created_at  DATETIME      DEFAULT CURRENT_TIMESTAMP,
+            id           INT           NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            match_name   VARCHAR(255)  NOT NULL,
+            team_a       VARCHAR(100)  NOT NULL DEFAULT '',
+            team_b       VARCHAR(100)  NOT NULL DEFAULT '',
+            match_time   VARCHAR(50)   NOT NULL DEFAULT '',
+            stream_link  VARCHAR(2000) NOT NULL,
+            is_live      TINYINT(1)    NOT NULL DEFAULT 0,
+            player_type  VARCHAR(50)   NOT NULL DEFAULT 'default',
+            channel_logo VARCHAR(2000) NOT NULL DEFAULT '',
+            qualities    JSON          DEFAULT NULL,
+            created_at   DATETIME      DEFAULT CURRENT_TIMESTAMP,
             INDEX idx_is_live (is_live),
             INDEX idx_created_at (created_at)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     ");
     echo "✅ Table 'matches' ready.\n";
+
+    // ── Add new columns if table already existed ───────────────
+    $columns = $pdo->query("SHOW COLUMNS FROM matches")->fetchAll(PDO::FETCH_COLUMN);
+    if (!in_array('player_type', $columns, true)) {
+        $pdo->exec("ALTER TABLE matches ADD COLUMN player_type VARCHAR(50) NOT NULL DEFAULT 'default'");
+        echo "✅ Added column 'player_type'.\n";
+    }
+    if (!in_array('channel_logo', $columns, true)) {
+        $pdo->exec("ALTER TABLE matches ADD COLUMN channel_logo VARCHAR(2000) NOT NULL DEFAULT ''");
+        echo "✅ Added column 'channel_logo'.\n";
+    }
+    if (!in_array('qualities', $columns, true)) {
+        $pdo->exec("ALTER TABLE matches ADD COLUMN qualities JSON DEFAULT NULL");
+        echo "✅ Added column 'qualities'.\n";
+    }
 
     // ── Seed with demo data only if table is empty ────────────
     $count = (int)$pdo->query("SELECT COUNT(*) FROM matches")->fetchColumn();
