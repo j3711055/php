@@ -46,6 +46,10 @@ function togglePlayerTypeFields(type) {
     classicSettings.classList.add('hidden');
     m3u8Settings.classList.remove('hidden');
     linkInput.removeAttribute('required');
+    // Automatically add a default quality row if list is empty
+    if (qualitiesList.children.length === 0) {
+      addQualityRow('HD', '');
+    }
   } else {
     classicSettings.classList.remove('hidden');
     m3u8Settings.classList.add('hidden');
