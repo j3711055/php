@@ -342,6 +342,18 @@ body {
   color: rgba(255,255,255,0.3);
 }
 
+/* ── M3U8 Quality Row Styles ────────────────────────────── */
+.quality-row {
+  animation: fadeInUp 0.25s ease both;
+}
+.quality-row input.q-title {
+  text-align: center;
+}
+.quality-row input.q-url {
+  direction: ltr;
+  text-align: left;
+}
+
 /* ── Responsive ──────────────────────────────────────────── */
 @media (max-width: 900px) {
   .admin-main { grid-template-columns: 1fr; }
